@@ -38,8 +38,9 @@ pipeline {
         checkout scm
         dir('code') {
           script {
-            pom = readMavenPom file: 'pom.xml'
-            version = pom.version
+            // pom = readMavenPom file: 'pom.xml'
+            // version = pom.version
+            def version = sh script: 'mvn help:evaluate -Dexpression=project.version -q -DforceStdout', returnStdout: true
             devTag = "${version}-" + currentBuild.number
             nexusUser = sh (
               script: 'oc get secret ${NEXUS_SECRET} -o jsonpath="{.data.username}"| base64 -d -',
@@ -166,7 +167,7 @@ pipeline {
               openshift.apply(bc)
             }
           }
-            
+
         }
       }
     }
@@ -186,7 +187,7 @@ pipeline {
                 if(env.USE_INTERNAL_REGISTRY.toBoolean()){
                   openshift.tag("${imageName}:latest", "${imageName}:${devTag}")
                 } else {
-                  sh "skopeo copy --src-tls-verify=false --dest-tls-verify=false --src-creds ${nexusUser}:${nexusPassword} --dest-creds ${nexusUser}:${nexusPassword} docker://${env.NEXUS_REGISTRY_SVC}/${imageName}:latest docker://${env.NEXUS_REGISTRY_SVC}/${imageName}:${devTag}"  
+                  sh "skopeo copy --src-tls-verify=false --dest-tls-verify=false --src-creds ${nexusUser}:${nexusPassword} --dest-creds ${nexusUser}:${nexusPassword} docker://${env.NEXUS_REGISTRY_SVC}/${imageName}:latest docker://${env.NEXUS_REGISTRY_SVC}/${imageName}:${devTag}"
                 }
               }
             }
@@ -194,8 +195,8 @@ pipeline {
         }
       }
     }
-    
-    
+
+
     // Create Service
     stage('Create Service') {
       when {
@@ -261,7 +262,7 @@ pipeline {
           openshift.withCluster() {
             openshift.withProject(env.DEV_PROJECT) {
               def template = './manifests/backend-dc-dev.yaml'
-             
+
                 openshift.apply(
                     openshift.process(
                       "-f", template,
@@ -271,7 +272,7 @@ pipeline {
                       "-p", "BACKEND_URL=${env.BACKEND_URL}",
                       "-p", "APP_VERSION=${version}"
                     )
-                  )  
+                  )
               //openshift.selector("dc", "${imageName}").rollout().pause();
             }
           }
